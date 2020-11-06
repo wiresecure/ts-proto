@@ -7,7 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "import_dir/thing.proto";
 package simple;
 
-// This comment is seperated by a blank non-comment line, and will detatch from 
+// This comment is seperated by a blank non-comment line, and will detatch from
 // the following comment on the message Simple.
 
 /** Example comment on the Simple message */
@@ -31,20 +31,12 @@ message Simple {
 }
 
 message Child {
-  enum Type {
-    UNKNOWN = 0;
-    GOOD = 1;
-    BAD = 2;
-  }
+  enum Type { UNKNOWN = 0; GOOD = 1; BAD = 2; }
   string name = 1;
   Type type = 2;
 }
 
-enum StateEnum {
-  UNKNOWN = 0;
-  ON = 2;
-  OFF = 3;
-}
+enum StateEnum { UNKNOWN = 0; ON = 2; OFF = 3; }
 
 message Nested {
   string name = 1;
@@ -56,16 +48,10 @@ message Nested {
     string name = 1;
     DeepMessage deep = 2;
 
-    message DeepMessage {
-      string name = 1;
-    }
+    message DeepMessage { string name = 1; }
   }
 
-  enum InnerEnum {
-    UNKNOWN_INNER = 0;
-    GOOD = 100;
-    BAD = 1000;
-  }
+  enum InnerEnum { UNKNOWN_INNER = 0; GOOD = 100; BAD = 1000; }
 }
 
 message OneOfMessage {
@@ -83,9 +69,7 @@ message SimpleWithWrappers {
   repeated google.protobuf.StringValue snacks = 7;
 }
 
-message Entity {
-  int32 id = 1;
-}
+message Entity { int32 id = 1; }
 
 message SimpleWithMap {
   map<int32, Entity> entitiesById = 1;
@@ -95,25 +79,18 @@ message SimpleWithMap {
   map<string, bytes> mapOfBytes = 5;
 }
 
-message SimpleWithSnakeCaseMap {
-  map<int32, Entity> entities_by_id = 1;
-}
+message SimpleWithSnakeCaseMap { map<int32, Entity> entities_by_id = 1; }
 
-message SimpleWithMapOfEnums {
-  map<int32, StateEnum> enums_by_id = 1;
-}
+message SimpleWithMapOfEnums { map<int32, StateEnum> enums_by_id = 1; }
 
 service PingService {
-  rpc ping(PingRequest) returns (PingResponse);
+  rpc ping(PingRequest) returns(PingResponse);
+  rpc pings(PingRequest) returns(stream PingResponse);
 }
 
-message PingRequest {
-  string input = 1;
-}
+message PingRequest { string input = 1; }
 
-message PingResponse {
-  string output = 1;
-}
+message PingResponse { string output = 1; }
 
 message Numbers {
   double double = 1;

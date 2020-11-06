@@ -8,7 +8,7 @@ import {
   responseType,
   TypeMap,
 } from './types';
-import { ClassSpec, CodeBlock, FunctionSpec, InterfaceSpec, Modifier, TypeNames } from 'ts-poet';
+import { ClassSpec, CodeBlock, FunctionSpec, InterfaceSpec, Lambda, Modifier, TypeName, TypeNames } from 'ts-poet';
 import { maybeAddComment, singular } from './utils';
 import SourceInfo, { Fields } from './sourceInfo';
 import { camelCase } from './case';
@@ -55,12 +55,31 @@ export function generateService(
     maybeAddComment(info, (text) => (requestFn = requestFn.addJavadoc(text)));
 
     let inputType = requestType(typeMap, methodDesc, options);
+    let outputType = responseType(typeMap, methodDesc, options);
     // the grpc-web clients `fromPartial` the input before handing off to grpc-web's
     // serde runtime, so it's okay to accept partial results from the client
     if (options.outputClientImpl === 'grpc-web') {
       inputType = TypeNames.parameterizedType(TypeNames.anyType('DeepPartial'), inputType);
     }
     requestFn = requestFn.addParameter('request', inputType);
+
+    // If returning a stream, add onMessage and and onEnd functions
+    if (methodDesc.serverStreaming) {
+      requestFn = requestFn.addParameter(
+        'onMessage',
+        new Lambda(
+          new Map<string, TypeName>([['msg', outputType]]),
+          TypeNames.VOID
+        )
+      );
+      requestFn = requestFn.addParameter(
+        'onEnd',
+        new Lambda(
+          new Map<string, TypeName>([['err', TypeNames.anyType('Error')]]),
+          TypeNames.VOID
+        )
+      );
+    }
 
     // Use metadata as last argument for interface only configuration
     if (options.outputClientImpl === 'grpc-web') {
@@ -73,8 +92,10 @@ export function generateService(
     }
 
     // Return observable for interface only configuration, passing returnObservable=true and methodDesc.serverStreaming=true
-    if (options.returnObservable || methodDesc.serverStreaming) {
+    if (options.returnObservable) {
       requestFn = requestFn.returns(responseObservable(typeMap, methodDesc, options));
+    } else if (methodDesc.serverStreaming) {
+      requestFn = requestFn.returns('void');
     } else {
       requestFn = requestFn.returns(responsePromise(typeMap, methodDesc, options));
     }
@@ -129,6 +150,55 @@ function generateRegularRpcMethod(
     .returns(responsePromise(typeMap, methodDesc, options));
 }
 
+function generateStreamingRpcMethod(
+  options: Options,
+  typeMap: TypeMap,
+  fileDesc: google.protobuf.FileDescriptorProto,
+  serviceDesc: google.protobuf.ServiceDescriptorProto,
+  methodDesc: google.protobuf.MethodDescriptorProto
+) {
+  let requestFn = FunctionSpec.create(methodDesc.name);
+  if (options.useContext) {
+    requestFn = requestFn.addParameter('ctx', TypeNames.typeVariable('Context'));
+  }
+  let inputType = requestType(typeMap, methodDesc, options);
+  let outputType = responseType(typeMap, methodDesc, options);
+  return requestFn
+    .addParameter('request', inputType)
+    .addParameter(
+      'onMessage',
+      new Lambda(
+        new Map<string, TypeName>([['msg', outputType]]),
+        TypeNames.VOID
+      )
+    )
+    .addParameter(
+      'onEnd',
+      new Lambda(
+        new Map<string, TypeName>([['err', TypeNames.anyType('Error')]]),
+        TypeNames.VOID
+      )
+    )
+    .addStatement('const data = %L.encode(request).finish()', inputType)
+    .addStatement(
+      'const _onMessage = data => onMessage(%L.decode(new %T(data)))',
+      outputType,
+      'Reader@protobufjs/minimal'
+    )
+    .addStatement(
+      'this.rpc.invoke(%L"%L.%L", %S, %L, %L, %L)',
+      options.useContext ? 'ctx, ' : '', // sneak ctx in as the 1st parameter to our rpc call
+      fileDesc.package,
+      serviceDesc.name,
+      methodDesc.name,
+      'data',
+      '_onMessage',
+      'onEnd'
+    )
+    .addStatement('return')
+    .returns('void');
+}
+
 export function generateServiceClientImpl(
   typeMap: TypeMap,
   fileDesc: FileDescriptorProto,
@@ -163,6 +233,8 @@ export function generateServiceClientImpl(
 
     if (options.useContext && methodDesc.name.match(/^Get[A-Z]/)) {
       client = client.addFunction(generateCachingRpcMethod(options, typeMap, fileDesc, serviceDesc, methodDesc));
+    } else if (methodDesc.serverStreaming) {
+      client = client.addFunction(generateStreamingRpcMethod(options, typeMap, fileDesc, serviceDesc, methodDesc));
     } else {
       client = client.addFunction(generateRegularRpcMethod(options, typeMap, fileDesc, serviceDesc, methodDesc));
     }
@@ -264,6 +336,12 @@ function generateCachingRpcMethod(
  */
 export function generateRpcType(options: Options): InterfaceSpec {
   const data = TypeNames.anyType('Uint8Array');
+
+  let rpc = InterfaceSpec.create('Rpc');
+  if (options.useContext) {
+    rpc = rpc.addTypeVariable(TypeNames.typeVariable('Context'));
+  }
+
   let fn = FunctionSpec.create('request');
   if (options.useContext) {
     fn = fn.addParameter('ctx', 'Context');
@@ -273,11 +351,35 @@ export function generateRpcType(options: Options): InterfaceSpec {
     .addParameter('method', TypeNames.STRING)
     .addParameter('data', data)
     .returns(TypeNames.PROMISE.param(data));
-  let rpc = InterfaceSpec.create('Rpc');
-  if (options.useContext) {
-    rpc = rpc.addTypeVariable(TypeNames.typeVariable('Context'));
-  }
+
   rpc = rpc.addFunction(fn);
+
+  let invokeFn = FunctionSpec.create('invoke');
+  if (options.useContext) {
+    invokeFn = invokeFn.addParameter('ctx', 'Context');
+  }
+  invokeFn = invokeFn
+    .addParameter('service', TypeNames.STRING)
+    .addParameter('method', TypeNames.STRING)
+    .addParameter('data', data)
+    .addParameter(
+      'onMessage',
+      new Lambda(
+        new Map<string, TypeName>([['msg', data]]),
+        TypeNames.VOID
+      )
+    )
+    .addParameter(
+      'onEnd',
+      new Lambda(
+        new Map<string, TypeName>([['err', TypeNames.anyType('Error')]]),
+        TypeNames.VOID
+      )
+    )
+    .returns(TypeNames.VOID);
+
+  rpc = rpc.addFunction(invokeFn);
+
   return rpc;
 }
 

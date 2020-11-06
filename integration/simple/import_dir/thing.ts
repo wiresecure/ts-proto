@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Timestamp } from '../google/protobuf/timestamp';
 import { Writer, Reader } from 'protobufjs/minimal';
 

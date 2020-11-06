@@ -1,3 +1,4 @@
+/* eslint-disable */
 //  Adding a comment to the syntax will become the first
 //  comment in the output source file.
 //
@@ -288,6 +289,8 @@ export interface PingService {
 
   ping(request: PingRequest): Promise<PingResponse>;
 
+  pings(request: PingRequest, onMessage: (msg: PingResponse) => void, onEnd: (err: Error) => void): void;
+
 }
 
 export class PingServiceClientImpl implements PingService {
@@ -304,11 +307,20 @@ export class PingServiceClientImpl implements PingService {
     return promise.then(data => PingResponse.decode(new Reader(data)));
   }
 
+  pings(request: PingRequest, onMessage: (msg: PingResponse) => void, onEnd: (err: Error) => void): void {
+    const data = PingRequest.encode(request).finish();
+    const _onMessage = data => onMessage(PingResponse.decode(new Reader(data)));
+    this.rpc.invoke("simple.PingService", "pings", data, _onMessage, onEnd);
+    return;
+  }
+
 }
 
 interface Rpc {
 
   request(service: string, method: string, data: Uint8Array): Promise<Uint8Array>;
+
+  invoke(service: string, method: string, data: Uint8Array, onMessage: (msg: Uint8Array) => void, onEnd: (err: Error) => void);
 
 }
 

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Writer, Reader } from 'protobufjs/minimal';
 
 

@@ -182,7 +182,7 @@ export const Timestamp = {
 };
 
 if (util.Long !== Long as any) {
-  util.Long = Long as any;
+  util.Long = Long.default as any;
   configure();
 }
 

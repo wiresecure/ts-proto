@@ -156,7 +156,7 @@ function addLongUtilityMethod(_file, options) {
     const configure = ts_poet_1.TypeNames.anyType('configure@protobufjs/minimal');
     let file = _file.addCode(ts_poet_1.CodeBlock.empty()
         .beginControlFlow('if (%T.Long !== %T as any)', util, 'Long*long')
-        .addStatement('%T.Long = %T as any', util, 'Long*long')
+        .addStatement('%T.Long = %T.default as any', util, 'Long*long')
         .addStatement('%T()', configure)
         .endControlFlow());
     if (options.forceLong === LongOption.LONG) {

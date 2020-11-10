@@ -258,7 +258,7 @@ function addLongUtilityMethod(_file: FileSpec, options: Options): FileSpec {
   let file = _file.addCode(
     CodeBlock.empty()
       .beginControlFlow('if (%T.Long !== %T as any)', util, 'Long*long')
-      .addStatement('%T.Long = %T as any', util, 'Long*long')
+      .addStatement('%T.Long = %T.default as any', util, 'Long*long')
       .addStatement('%T()', configure)
       .endControlFlow()
   );

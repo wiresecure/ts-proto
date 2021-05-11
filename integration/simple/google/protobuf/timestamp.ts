@@ -119,7 +119,7 @@ function longToNumber(long: Long) {
 export const protobufPackage = 'google.protobuf'
 
 export const Timestamp = {
-  encode(message: Timestamp, writer: Writer): Writer {
+  encode(message: Timestamp, writer?: Writer): Writer {
     if (writer === undefined) {
       writer = Writer.create();
     }

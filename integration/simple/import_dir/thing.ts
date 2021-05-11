@@ -34,7 +34,7 @@ function fromTimestamp(t: Timestamp): Date {
 export const protobufPackage = 'simple'
 
 export const ImportedThing = {
-  encode(message: ImportedThing, writer: Writer): Writer {
+  encode(message: ImportedThing, writer?: Writer): Writer {
     if (writer === undefined) {
       writer = Writer.create();
     }

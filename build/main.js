@@ -539,8 +539,9 @@ function generateEncode(typeMap, fullName, messageDesc, options) {
     // create the basic function declaration
     let func = ts_poet_1.FunctionSpec.create('encode')
         .addParameter(messageDesc.field.length > 0 ? 'message' : '_', fullName)
-        .addParameter('writer', 'Writer@protobufjs/minimal', { defaultValueField: ts_poet_1.CodeBlock.of('Writer.create()') })
+        .addParameter('writer', 'Writer@protobufjs/minimal')
         .returns('Writer@protobufjs/minimal');
+    func = func.beginControlFlow(`if (writer === undefined)`).addStatement('writer = Writer.create()').endControlFlow();
     // then add a case for each field
     messageDesc.field.forEach((field) => {
         const fieldName = case_1.maybeSnakeToCamel(field.name, options);

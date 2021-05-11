@@ -1,4 +1,3 @@
-/* eslint-disable */
 import * as Long from 'long';
 import { Writer, Reader, util, configure } from 'protobufjs/minimal';
 
@@ -120,7 +119,10 @@ function longToNumber(long: Long) {
 export const protobufPackage = 'google.protobuf'
 
 export const Timestamp = {
-  encode(message: Timestamp, writer: Writer = Writer.create()): Writer {
+  encode(message: Timestamp, writer: Writer): Writer {
+    if (writer === undefined) {
+      writer = Writer.create();
+    }
     writer.uint32(8).int64(message.seconds);
     writer.uint32(16).int32(message.nanos);
     return writer;
